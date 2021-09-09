@@ -1,3 +1,7 @@
+# Changes
+
+Automatically add `<out_file>.bib` in the same directory of output file with the same prefix and add it to the `yaml` metablock.
+
 # pandoc-doi2cite
 This pandoc lua filiter helps users to insert references in a document
 with using DOI(Digital Object Identifier) tags. With this filter, users

@@ -10,7 +10,6 @@
 --------------------------------------------------------------------------------
 base_url = "http://api.crossref.org"
 mailto = "pandoc.doi2cite@gmail.com"
-bibname = "__from_DOI.bib"
 key_list = {};
 doi_key_map = {};
 doi_entry_map = {};
@@ -27,10 +26,15 @@ error_strs["<html><body><h1>503 Service Unavailable</h1>\n"
 --------------------------------------------------------------------------------
 -- Get bibliography filepath from yaml metadata
 function Meta(m)
-    local bib_data = m.bibliography
-    local bibpaths = get_paths_from(bib_data)
-    bibpath = find_filepath(bibname, bibpaths)
-    bibpath = verify_path(bibpath)
+    bibpath = PANDOC_STATE.output_file:match('(.+)%..+$') .. '.bib'
+    if m.bibliography then
+        table.insert(m.bibliography, { bibpath })
+    else
+        m.bibliography = { bibpath }
+    end
+    m["link-citations"] = true
+    m["biblio-title=Bibliography"] = "test"
+
     local f = io.open(bibpath, "r")
     if f then
         entries_str = f:read('*all')
@@ -45,6 +49,8 @@ function Meta(m)
     else
         make_new_file(bibpath)
     end
+
+    return m
 end
 
 -- Get bibtex data of doi-based citation.id and make bibliography.
@@ -85,7 +91,7 @@ function Cite(c)
                     else
                         error("Unable to open file: "..bibpath)
                     end
-                end                
+                end
             end
         end
     end
@@ -109,26 +115,7 @@ function get_bibentry(doi)
     return entry_str
 end
 
--- Extract designated filepaths from 1 or 2 dimensional metadata
-function get_paths_from(metadata)
-    local filepaths = {};
-    if metadata then
-        if metadata[1].text then
-            filepaths[metadata[1].text] = true
-        elseif type(metadata) == "table" then
-            for _, datum in pairs(metadata) do
-                if datum[1] then
-                    if datum[1].text then
-                        filepaths[datum[1].text] = true
-                    end
-                end
-            end
-        end
-    end
-    return filepaths    
-end
-
--- Extract filename and dirname from a given a path 
+-- Extract filename and dirname from a given a path
 function split_path(filepath)
     local delim = nil
     local len = filepath:len()
@@ -144,17 +131,6 @@ function split_path(filepath)
     local dirname = filepath:sub(1, len - pos)
     local filename = reversed:sub(1, pos - 1):reverse()
     return {filename = filename, dirname = dirname}
-end
-
--- Find bibname in a given filepath list and return the filepath if found 
-function find_filepath(filename, filepaths)
-    for path, _ in pairs(filepaths) do
-        local filename = split_path(path)["filename"]
-        if filename == bibname then
-            return path
-        end
-    end
-    return nil
 end
 
 -- Make some TeX descriptions processable by citeproc
@@ -185,8 +161,8 @@ end
 -- Replace entry key of "entry_string" to newkey
 function replace_entrykey(entry_string, newkey)
     entry_string = entry_string:gsub('(@%w+{).-(,)', '%1'..newkey..'%2')
-    return entry_string    
-end 
+    return entry_string
+end
 
 -- Make hashmap which key = DOI, value = bibtex entry string
 function get_doi_entry_map(bibtex_string)
@@ -225,21 +201,6 @@ function make_new_file(filepath)
             .."This error may come from the missing directory. \n"
             )
         end
-    end
-end
-
--- Verify that the given filepath is correct.
--- Catch common Pandoc user mistakes about Windows-formatted filepath.
-function verify_path(bibpath)
-    if bibpath == nil then
-        print("[WARNING] doi2cite: "
-            .."The given file path is incorrect or empty. "
-            .."In Windows-formatted filepath, Pandoc recognizes "
-            .."double backslash ("..[[\\]]..") as the delimiters."
-        )
-        return "__from_DOI.bib"
-    else
-        return bibpath
     end
 end
 
