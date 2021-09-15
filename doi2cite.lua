@@ -4,7 +4,6 @@
 -- under the terms of the MIT license. See LICENSE for details.
 --------------------------------------------------------------------------------
 
-
 --------------------------------------------------------------------------------
 -- Global variables --
 --------------------------------------------------------------------------------
@@ -27,6 +26,7 @@ error_strs["<html><body><h1>503 Service Unavailable</h1>\n"
 -- Get bibliography filepath from yaml metadata
 function Meta(m)
     bibpath = PANDOC_STATE.output_file:match('(.+)%..+$') .. '.bib'
+    bibpath = bibpath:gsub("([^/]+).bib", ".%1.bib")
     if m.bibliography then
         table.insert(m.bibliography, { bibpath })
     else
